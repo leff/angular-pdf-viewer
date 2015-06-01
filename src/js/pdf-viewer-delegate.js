@@ -9,5 +9,6 @@ angular.module('pdf', [])
     'getPageCount',
     'getCurrentPage',
     'goToPage',
+    'getScale',
     'load'
   ]));

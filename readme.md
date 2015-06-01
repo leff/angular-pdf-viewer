@@ -61,6 +61,7 @@ The following methods are available to the delegate:
 - getPageCount
 - getCurrentPage
 - goToPage(pageNumber)
+- getScale *returns height, width and scale value*
 - load
 
 
@@ -75,6 +76,7 @@ pdfDelegate
 ```
 
 
+
 ## Example
 
 Run `npm install && bower install` to install all dependencies. And then `gulp dev` to start a local server. The example will now be available at [localhost:3000/src](http://localhost:3000/src)
@@ -82,6 +84,35 @@ Run `npm install && bower install` to install all dependencies. And then `gulp d
 
 ## Toolbar
 The default toolbar can be shown or hidden using the `show-toolbar` attribute. Since the PDF can be easily controlled using the delegate service it's quite trivial to build a custom toolbar. Or place the toolbar on a separate scope.
+
+
+## Event Service
+
+The `pdfEventService` allows external scopes to respond to events that take place within the pdf directive. This allows you to fine tune the UX of your custom controls. The events that are broadcast are:
+- renderStart
+- renderComplete
+- click(evt)
+- dblclick(evt)
+
+``` js
+controller: function($scope, pdfDelegate, pdfEventService) {
+    var pdf = pdfDelegate.$getByHandle('my-pdf-container');
+    // Basic usage
+    pdfEventService.listen('renderComplete', function() {
+        // update my custom page count indicators
+        $scope.currentPage = pdf.getCurrentPage();
+        $scope.pageCount = pdf.getPageCount();
+        $scope.$apply();
+    });
+
+    // Getting access to js event data
+    pdfEventService.listen('dblclick', function(ng_event, js_event) {
+        dblclick_coords = {x: js_event.offsetX, y: js_event.offsetY};
+        // do something with coords
+        pdf.zoomIn(2.0);
+    });
+}
+```
 
 
 ## Similar projects

@@ -1,11 +1,22 @@
 angular.module('pdf')
+  .service("pdfEventService", [
+    '$rootScope',
+  function($rootScope) {
+      this.broadcast = function(eventType, event) {
+        $rootScope.$broadcast('pdf:'+eventType, event);
+      };
+      this.listen = function(eventType, callback) {
+        $rootScope.$on('pdf:'+eventType, callback);
+      };
+  }])
   .controller('PdfCtrl', [
     '$scope',
     '$element',
     '$attrs',
     'pdfDelegate',
     '$log',
-  function($scope, $element, $attrs, pdfDelegate, $log) {
+    'pdfEventService',
+  function($scope, $element, $attrs, pdfDelegate, $log, pdfEventService) {
 
     // Register the instance!
     var deregisterInstance = pdfDelegate._registerInstance(this, $attrs.delegateHandle);
@@ -21,12 +32,16 @@ angular.module('pdf')
     var currentPage = 1;
     var angle = 0;
     var scale = $attrs.scale ? $attrs.scale : 1;
-    var canvas = $element.find('canvas')[0];
+    var $canvas = $element.find('canvas');
+    var canvas = $canvas[0];
     var ctx = canvas.getContext('2d');
 
     var renderPage = function(num) {
       if (!angular.isNumber(num))
         num = parseInt(num);
+
+      pdfEventService.broadcast('renderStart');
+
       pdfDoc
         .getPage(num)
         .then(function(page) {
@@ -39,7 +54,10 @@ angular.module('pdf')
             viewport: viewport
           };
 
-          page.render(renderContext);
+          var renderTask = page.render(renderContext);
+          renderTask.promise.then(function () {
+            pdfEventService.broadcast('renderComplete');
+          });
         });
     };
 
@@ -115,6 +133,17 @@ angular.module('pdf')
       }
     };
 
+    self.getScale = function() {
+      var h = canvas.height,
+          w = canvas.width,
+          s = scale;
+      return {
+        height: h,
+        width: w,
+        scale: s
+      }
+    };
+
     self.load = function(_url) {
       if (_url) {
         url = _url;
@@ -141,6 +170,14 @@ angular.module('pdf')
 
         }, $log.error);
     };
+
+    $canvas.on('click', function(evt) {
+      pdfEventService.broadcast('click', evt);
+    });
+
+    $canvas.on('dblclick', function(evt) {
+      pdfEventService.broadcast('dblclick', evt);
+    });
 
     self.load();
 }]);
