@@ -41,9 +41,9 @@ The URL, request headers, scale and delegate-handle can be set using the attribu
 ```
 
 
-## Delegate Service (pdfDelegate)
+## Delegate Service (`pdfDelegate`)
 
-The pdfDelegate service allows you to access and control individual instances of a directive. This allows us to have multiple instances of the same directive in the same controller.
+The `pdfDelegate` service allows you to access and control individual instances of a directive. This allows us to have multiple instances of the same directive in the same controller.
 
 Inject the `pdfDelegate` service into your controller. You can then fetch an instance using it's delegate handle and call methods on it:
 
@@ -52,18 +52,45 @@ pdfDelegate.$getByHandle('my-pdf-container').zoomIn();
 ```
 
 The following methods are available to the delegate:
-- prev
-- next
-- zoomIn(amount) *default amount = 0.2*
-- zoomOut(amount) *default amount = 0.2*
-- zoomTo(amount)
-- rotate *(clockwise by 90 degrees)*
-- getPageCount
-- getCurrentPage
-- goToPage(pageNumber)
-- getScale *returns height, width and scale value*
-- load
+- **Getters**
+    + `getPageCount()`
+    + `getCurrentPage()`
+    + `getScale()` *returns height, width and scale value*
+- **Actions** - all actions return a promise that is resolved when the document finishes rendering.
+    + `prev(options)` 
+        * options [object ex: `{scale: 1.0}`]
+        * promise attributes: *[new page number (int)]*
+    + `next(options)`
+        * options [object ex: `{scale: 1.0}`]
+        * promise attributes: *[new page number (int)]*
+    + `zoomIn(amount)` 
+        * amount [optional float] default: 0.2
+        * promise attributes: *[new scale (float)]*
+    + `zoomOut(amount)`
+        * amount [optional float] default: 0.2
+        * promise attributes: *[new scale (float)]*
+    + `zoomTo(amount)`
+        * amount [required float]
+        * promise attributes: *[new scale (float)]*
+    + `rotate()` 
+        * *clockwise by 90 degrees*
+        * promise attributes: *[new angle (int)]*
+    + `goToPage(pageNumber, options)`
+        * pageNumber [required int]
+        * options [optional object ex: `{scale: 1.0}`]
+        * promise attributes: *[new page number]*
+    + `load()`
 
+
+### Using Actions' promises
+
+``` js
+    $scope.next = function() {
+        pdf.next({scale: 1.0}).then(function(page) { 
+            $scope.currentPage = page;
+         });
+    };
+```
 
 ## Change the PDF File
 
@@ -86,30 +113,21 @@ Run `npm install && bower install` to install all dependencies. And then `gulp d
 The default toolbar can be shown or hidden using the `show-toolbar` attribute. Since the PDF can be easily controlled using the delegate service it's quite trivial to build a custom toolbar. Or place the toolbar on a separate scope.
 
 
-## Event Service
+## Event Service (`pdfEventService`)
 
 The `pdfEventService` allows external scopes to respond to events that take place within the pdf directive. This allows you to fine tune the UX of your custom controls. The events that are broadcast are:
 - renderStart
 - renderComplete
-- click(evt)
-- dblclick(evt)
+- documentLoaded
+
 
 ``` js
 controller: function($scope, pdfDelegate, pdfEventService) {
     var pdf = pdfDelegate.$getByHandle('my-pdf-container');
     // Basic usage
-    pdfEventService.listen('renderComplete', function() {
-        // update my custom page count indicators
+    pdfEventService.listen('documentLoaded', function() {
         $scope.currentPage = pdf.getCurrentPage();
         $scope.pageCount = pdf.getPageCount();
-        $scope.$apply();
-    });
-
-    // Getting access to js event data
-    pdfEventService.listen('dblclick', function(ng_event, js_event) {
-        dblclick_coords = {x: js_event.offsetX, y: js_event.offsetY};
-        // do something with coords
-        pdf.zoomIn(2.0);
     });
 }
 ```

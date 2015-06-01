@@ -16,7 +16,8 @@ angular.module('pdf')
     'pdfDelegate',
     '$log',
     'pdfEventService',
-  function($scope, $element, $attrs, pdfDelegate, $log, pdfEventService) {
+    '$q',
+  function($scope, $element, $attrs, pdfDelegate, $log, pdfEventService, $q) {
 
     // Register the instance!
     var deregisterInstance = pdfDelegate._registerInstance(this, $attrs.delegateHandle);
@@ -37,6 +38,7 @@ angular.module('pdf')
     var ctx = canvas.getContext('2d');
 
     var renderPage = function(num) {
+      var deferred = $q.defer();
       if (!angular.isNumber(num))
         num = parseInt(num);
 
@@ -57,8 +59,10 @@ angular.module('pdf')
           var renderTask = page.render(renderContext);
           renderTask.promise.then(function () {
             pdfEventService.broadcast('renderComplete');
+            deferred.resolve('renderComplete');
           });
         });
+      return deferred.promise;
     };
 
     var transform = function() {
@@ -69,43 +73,73 @@ angular.module('pdf')
       canvas.style.transform = 'rotate('+ angle + 'deg)';
     };
 
-    self.prev = function() {
-      if (currentPage <= 1)
-        return;
-      currentPage = parseInt(currentPage, 10) - 1;
-      renderPage(currentPage);
+    var navigationOptions = function(options) {
+      if( options ) {
+        if( options.scale ) { scale = parseFloat(options.scale); }
+      }
     };
 
-    self.next = function() {
-      if (currentPage >= pdfDoc.numPages)
-        return;
-      currentPage = parseInt(currentPage, 10) + 1;
-      renderPage(currentPage);
+    self.prev = function(options) {
+      var deferred = $q.defer();
+      if (currentPage <= 1) {
+        deferred.reject('At first page');
+      } else {
+        navigationOptions(options);
+        currentPage = parseInt(currentPage, 10) - 1;
+        renderPage(currentPage).then(function() {
+          deferred.resolve(currentPage);
+        });
+      }
+      return deferred.promise;
+    };
+
+    self.next = function(options) {
+      var deferred = $q.defer();
+      if (currentPage >= pdfDoc.numPages) {
+        deferred.reject('No more pages');
+      } else {
+        navigationOptions(options);
+        currentPage = parseInt(currentPage, 10) + 1;
+        renderPage(currentPage).then(function() {
+          deferred.resolve(currentPage);
+        });
+      }
+      return deferred.promise;
     };
 
     self.zoomIn = function(amount) {
+      var deferred = $q.defer();
       amount = amount || 0.2;
       scale = parseFloat(scale) + amount;
-      renderPage(currentPage);
-      return scale;
+      renderPage(currentPage).then(function() {
+        deferred.resolve(scale);
+      });
+      return deferred.promise;
     };
 
     self.zoomOut = function(amount) {
+      var deferred = $q.defer();
       amount = amount || 0.2;
       scale = parseFloat(scale) - amount;
       scale = (scale > 0) ? scale : 0.1;
-      renderPage(currentPage);
-      return scale;
+      renderPage(currentPage).then(function() {
+        deferred.resolve(scale);
+      });
+      return deferred.promise;
     };
 
     self.zoomTo = function(zoomToScale) {
+      var deferred = $q.defer();
       zoomToScale = (zoomToScale) ? zoomToScale : 1.0;
       scale = parseFloat(zoomToScale);
-      renderPage(currentPage);
-      return scale;
+      renderPage(currentPage).then(function() {
+        deferred.resolve(scale);
+      });
+      return deferred.promise;
     };
 
     self.rotate = function() {
+      var deferred = $q.defer();
       if (angle === 0) {
         angle = 90;
       } else if (angle === 90) {
@@ -116,6 +150,10 @@ angular.module('pdf')
         angle = 0
       }
       transform();
+
+      // synchronous but return a promise for consistency
+      deferred.resolve(angle);
+      return deferred.promise;
     };
 
     self.getPageCount = function() {
@@ -124,13 +162,6 @@ angular.module('pdf')
 
     self.getCurrentPage = function () {
       return currentPage;
-    };
-
-    self.goToPage = function(newVal) {
-      if (pdfDoc !== null) {
-        currentPage = newVal;
-        renderPage(newVal);
-      }
     };
 
     self.getScale = function() {
@@ -144,12 +175,27 @@ angular.module('pdf')
       }
     };
 
+    self.goToPage = function(newVal, options) {
+      if (pdfDoc !== null) {
+        var deferred = $q.defer();
+        navigationOptions(options);
+        currentPage = newVal;
+        renderPage(newVal).then(function() {
+          deferred.resolve(currentPage);
+        });
+        return deferred.promise;
+      }
+    };
+
+
+
     self.load = function(_url) {
       if (_url) {
         url = _url;
       }
 
-      var docInitParams = {};
+      var docInitParams = {},
+          deferred = $q.defer();;
 
       if (headers) {
         docInitParams.url = url;
@@ -158,26 +204,23 @@ angular.module('pdf')
         docInitParams.url = url;
       }
 
-      return PDFJS
+      PDFJS
         .getDocument(docInitParams)
         .then(function (_pdfDoc) {
 
           pdfDoc = _pdfDoc;
-          renderPage(1);
+          renderPage(1).then(function() {
+            pdfEventService.broadcast('documentLoaded');
+            deferred.resolve();
+          });
           $scope.$apply(function() {
             $scope.pageCount = _pdfDoc.numPages;
           });
 
         }, $log.error);
+
+      return deferred.promise;
     };
-
-    $canvas.on('click', function(evt) {
-      pdfEventService.broadcast('click', evt);
-    });
-
-    $canvas.on('dblclick', function(evt) {
-      pdfEventService.broadcast('dblclick', evt);
-    });
 
     self.load();
 }]);
