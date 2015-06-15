@@ -89,8 +89,8 @@ angular.module('pdf')
         renderPage(currentPage).then(function() {
           deferred.resolve(currentPage);
         });
+        pdfEventService.broadcast('pageChanged', currentPage);
       }
-      pdfEventService.broadcast('pageChanged', currentPage);
       return deferred.promise;
     };
 
@@ -104,8 +104,8 @@ angular.module('pdf')
         renderPage(currentPage).then(function() {
           deferred.resolve(currentPage);
         });
+        pdfEventService.broadcast('pageChanged', currentPage);
       }
-      pdfEventService.broadcast('pageChanged', currentPage);
       return deferred.promise;
     };
 
