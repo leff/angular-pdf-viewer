@@ -90,6 +90,7 @@ angular.module('pdf')
           deferred.resolve(currentPage);
         });
       }
+      pdfEventService.broadcast('pageChanged', currentPage);
       return deferred.promise;
     };
 
@@ -104,6 +105,7 @@ angular.module('pdf')
           deferred.resolve(currentPage);
         });
       }
+      pdfEventService.broadcast('pageChanged', currentPage);
       return deferred.promise;
     };
 
