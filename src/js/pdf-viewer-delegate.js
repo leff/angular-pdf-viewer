@@ -10,5 +10,7 @@ angular.module('pdf', [])
     'getCurrentPage',
     'goToPage',
     'getScale',
-    'load'
+    'load',
+    'setPDFDoc',
+    'renderPage'
   ]));
