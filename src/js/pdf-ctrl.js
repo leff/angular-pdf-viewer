@@ -37,11 +37,11 @@ angular.module('pdf')
     var canvas = $canvas[0];
     var ctx = canvas.getContext('2d');
 
-    var renderPage = function(num) {
+    self.renderPage = function(num) {
       var deferred = $q.defer();
       if (!angular.isNumber(num))
         num = parseInt(num);
-
+      currentPage = num;
       pdfEventService.broadcast('renderStart');
 
       pdfDoc
@@ -86,7 +86,7 @@ angular.module('pdf')
       } else {
         navigationOptions(options);
         currentPage = parseInt(currentPage, 10) - 1;
-        renderPage(currentPage).then(function() {
+        self.renderPage(currentPage).then(function() {
           deferred.resolve(currentPage);
         });
         pdfEventService.broadcast('pageChanged', currentPage);
@@ -101,7 +101,7 @@ angular.module('pdf')
       } else {
         navigationOptions(options);
         currentPage = parseInt(currentPage, 10) + 1;
-        renderPage(currentPage).then(function() {
+        self.renderPage(currentPage).then(function() {
           deferred.resolve(currentPage);
         });
         pdfEventService.broadcast('pageChanged', currentPage);
@@ -113,7 +113,7 @@ angular.module('pdf')
       var deferred = $q.defer();
       amount = amount || 0.2;
       scale = parseFloat(scale) + amount;
-      renderPage(currentPage).then(function() {
+      self.renderPage(currentPage).then(function() {
         deferred.resolve(scale);
       });
       return deferred.promise;
@@ -124,7 +124,7 @@ angular.module('pdf')
       amount = amount || 0.2;
       scale = parseFloat(scale) - amount;
       scale = (scale > 0) ? scale : 0.1;
-      renderPage(currentPage).then(function() {
+      self.renderPage(currentPage).then(function() {
         deferred.resolve(scale);
       });
       return deferred.promise;
@@ -134,7 +134,7 @@ angular.module('pdf')
       var deferred = $q.defer();
       zoomToScale = (zoomToScale) ? zoomToScale : 1.0;
       scale = parseFloat(zoomToScale);
-      renderPage(currentPage).then(function() {
+      self.renderPage(currentPage).then(function() {
         deferred.resolve(scale);
       });
       return deferred.promise;
@@ -182,14 +182,16 @@ angular.module('pdf')
         var deferred = $q.defer();
         navigationOptions(options);
         currentPage = newVal;
-        renderPage(newVal).then(function() {
+        self.renderPage(newVal).then(function() {
           deferred.resolve(currentPage);
         });
         return deferred.promise;
       }
     };
 
-
+    self.setPDFDoc = function(_pdfDoc) {
+      pdfDoc = _pdfDoc;
+    };
 
     self.load = function(_url) {
       if (_url) {
@@ -210,11 +212,7 @@ angular.module('pdf')
         .getDocument(docInitParams)
         .then(function (_pdfDoc) {
 
-          pdfDoc = _pdfDoc;
-          renderPage(1).then(function() {
-            pdfEventService.broadcast('documentLoaded');
-            deferred.resolve();
-          });
+          deferred.resolve(_pdfDoc);
           $scope.$apply(function() {
             $scope.pageCount = _pdfDoc.numPages;
           });
@@ -223,6 +221,4 @@ angular.module('pdf')
 
       return deferred.promise;
     };
-
-    self.load();
 }]);
